@@ -1,0 +1,37 @@
+name: 🚀 CD
+
+# Publishes the desired AWS state (deploy/) as a cosign-signed OCI manifests
+# artifact consumed by the platform cluster's `aws` tenant. There is NO
+# container image here — only manifests — so it delegates to the shared
+# manifests-only publish workflow in devantler-tech/actions (the
+# manifests-only sibling of publish-app.yaml). The OCI name defaults to this
+# repository (devantler-tech/aws), so the artifact lands at
+# oci://ghcr.io/devantler-tech/aws/manifests.
+#
+# Because signing runs INSIDE the reusable workflow, the cosign certificate
+# identity (OIDC subject) is that workflow's path —
+# https://github.com/devantler-tech/actions/.github/workflows/publish-manifests.yaml@<ref>
+# — NOT this repo's cd.yaml. The platform `aws` OCIRepository's
+# verify.matchOIDCIdentity.subject must match that (mirror the
+# github-config tenant's verify block in devantler-tech/platform).
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions: {}
+
+jobs:
+  publish-manifests:
+    name: 🗳️ Publish manifests
+    permissions:
+      contents: read # checkout
+      packages: write # push the OCI artifact to GHCR
+      id-token: write # keyless cosign signing (Fulcio + Rekor via GitHub OIDC)
+    # Pinned to the released commit SHA (zizmor blanket policy requires a hash;
+    # the SHA must be reachable from a tag, or zizmor flags it as an impostor).
+    # Renovate manages this pin, as it does for publish-app.yaml elsewhere.
+    # The platform verifier matches `@.+$`, so the ref does not affect cosign
+    # verification.
+    uses: devantler-tech/actions/.github/workflows/publish-manifests.yaml@5aa2657f976103d716f585266a0fa4e964594df2 # v9.0.0
