@@ -1,0 +1,13 @@
+# Root of the manifests artifact published to
+# oci://ghcr.io/devantler-tech/aws/manifests and applied by the platform's
+# `aws` tenant Kustomization. It carries devantler-tech's desired AWS state as
+# Crossplane managed resources (provider-aws family). Manifests stay
+# namespace-agnostic — the platform-side Kustomization's targetNamespace
+# injects the `aws` namespace.
+#
+# Auth wiring (namespace, SecretStore, bootstrap-credential ExternalSecret,
+# ProviderConfig) is provisioned PLATFORM-SIDE (platform#2325/#2412) — do not
+# add credentials or provider config here.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources: []
