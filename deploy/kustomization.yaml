@@ -10,4 +10,6 @@
 # add credentials or provider config here.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-resources: []
+resources:
+  - eks-ci/
+
