@@ -1,0 +1,30 @@
+# The GitHub Actions OIDC identity provider for this AWS account. One per
+# account; every repo/workflow-scoped CI role trusts it with a `sub` condition
+# (first consumer: the ksail EKS smoke-test role, step 2 in kustomization.yaml).
+# Delete is omitted so a Flux prune can never remove the account's OIDC trust
+# anchor out from under roles that reference it.
+apiVersion: iam.aws.m.upbound.io/v1beta1
+kind: OpenIDConnectProvider
+metadata:
+  name: github-actions
+spec:
+  managementPolicies:
+    - Observe
+    - Create
+    - Update
+    - LateInitialize
+  forProvider:
+    url: https://token.actions.githubusercontent.com
+    clientIdList:
+      - sts.amazonaws.com
+    # AWS has trusted GitHub's root CAs directly since 2023-07 and ignores
+    # these for token.actions.githubusercontent.com, but the field is part of
+    # the resource shape — pin GitHub's two published thumbprints so the spec
+    # is deterministic rather than provider-computed.
+    thumbprintList:
+      - 6938fd4d98bab03faadb97b34396831e3780aea1
+      - 1c58a3a8518e8759bf075b76b750d4f2df264fcd
+  providerConfigRef:
+    kind: ProviderConfig
+    name: default
+
