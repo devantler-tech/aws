@@ -8,19 +8,19 @@
 # Two-step rollout (the role's trust policy must name the provider's EXACT
 # ARN, which embeds the AWS account id — only observable after step 1
 # reconciles; principal ARNs cannot be wildcarded):
-#   1. (this slice) The GitHub OIDC identity provider. Reconciling it proves
-#      the OpenBao bootstrap credential end-to-end and surfaces the account id
-#      in status.atProvider.arn.
-#   2. (follow-up) The `Role`: trust scoped to
+#   1. (done) The GitHub OIDC identity provider. Reconciled on prod
+#      (Synced=True/Ready=True) after platform#2598 unblocked provider egress;
+#      its status.atProvider.arn is the Federated principal the role trusts.
+#   2. (this slice) The `Role` (eks-ci-role.yaml): trust scoped to
 #      repo:devantler-tech/ksail:environment:ci, maxSessionDuration 7200 (the
 #      smoke job may run 120 min incl. cleanup), least-privilege permissions
 #      as an INLINE policy (per platform#2564: Policy/RolePolicyAttachment
 #      MRDs are deliberately NOT activated), scoped to the workflow's
-#      st-eks-*/eksctl-st-eks-* naming. Its ARN then goes to the ksail `ci`
-#      environment as AWS_OIDC_ROLE_ARN (child 3, the workflow's clean-skip
-#      gate).
+#      st-eks-*/eksctl-st-eks-* naming. Once it reconciles, its ARN goes to
+#      the ksail `ci` environment as AWS_OIDC_ROLE_ARN (child 3, the
+#      workflow's clean-skip gate).
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - github-oidc-provider.yaml
-
+  - eks-ci-role.yaml
