@@ -73,7 +73,8 @@ spec:
                   "arn:aws:eks:*:939001610192:cluster/st-eks-*",
                   "arn:aws:eks:*:939001610192:nodegroup/st-eks-*/*/*",
                   "arn:aws:eks:*:939001610192:addon/st-eks-*/*/*",
-                  "arn:aws:eks:*:939001610192:access-entry/st-eks-*/*/*/*/*"
+                  "arn:aws:eks:*:939001610192:access-entry/st-eks-*/*/*/*/*",
+                  "arn:aws:eks:*:939001610192:accessEntry/st-eks-*/*/*/*/*"
                 ]
               },
               {
