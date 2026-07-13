@@ -14,8 +14,8 @@
 #   2. (this slice) The `Role` (eks-ci-role.yaml): trust scoped to
 #      repo:devantler-tech/ksail:environment:ci, maxSessionDuration 7200 (the
 #      smoke job may run 120 min incl. cleanup), least-privilege permissions
-#      as an INLINE policy (per platform#2564: Policy/RolePolicyAttachment
-#      MRDs are deliberately NOT activated), scoped to the workflow's
+#      as an INLINE policy (platform#2564; the one Policy MR here is the
+#      permissions boundary capping roles eksctl creates), scoped to the workflow's
 #      st-eks-*/eksctl-st-eks-* naming. Once it reconciles, its ARN goes to
 #      the ksail `ci` environment as AWS_OIDC_ROLE_ARN (child 3, the
 #      workflow's clean-skip gate).
@@ -23,4 +23,5 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - github-oidc-provider.yaml
+  - eks-ci-smoke-boundary.yaml
   - eks-ci-role.yaml
