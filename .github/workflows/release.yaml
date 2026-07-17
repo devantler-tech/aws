@@ -5,14 +5,12 @@ on:
     branches:
       - main
 
-permissions:
-  contents: write
-  issues: write
-  pull-requests: write
-  id-token: write
+permissions: {}
 
 jobs:
   release:
-    uses: devantler-tech/actions/.github/workflows/create-release.yaml@5aa2657f976103d716f585266a0fa4e964594df2 # v9.0.0
+    uses: devantler-tech/actions/.github/workflows/create-release.yaml@94146b00945cdcc75fbd99624d909a2345d2bf67 # v10.1.1
+    with:
+      disable-issue-side-effects: true
     secrets:
       APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
