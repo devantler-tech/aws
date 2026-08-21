@@ -9,7 +9,7 @@ permissions: {}
 
 jobs:
   release:
-    uses: devantler-tech/actions/.github/workflows/create-release.yaml@94146b00945cdcc75fbd99624d909a2345d2bf67 # v10.1.1
+    uses: devantler-tech/actions/.github/workflows/create-release.yaml@b089a1b041cb86af22cdc57de58a4d7d258dcc32 # v13.1.1
     with:
       disable-issue-side-effects: true
     secrets:
