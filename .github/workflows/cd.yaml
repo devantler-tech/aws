@@ -37,6 +37,6 @@ jobs:
     # accept fails nothing in this repo — the artifact still publishes, signed
     # under an identity the platform rejects, and the `aws` tenant stops
     # reconciling until the ref is put back.
-    uses: devantler-tech/actions/.github/workflows/publish-manifests.yaml@4f4e07a3ebf3e1161756a292966e36c91a65ee04 # v13.3.0
+    uses: devantler-tech/actions/.github/workflows/publish-manifests.yaml@a147ead8b8bc937fbfb1974e3698c7e32f95517d # v13.5.1
     with:
       enable-caller-pin: true
