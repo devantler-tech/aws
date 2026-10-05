@@ -32,3 +32,7 @@ It mirrors the `devantler-tech/.github` repo's `github-config` tenant pattern.
 - **Required check:** `CI - Required Checks` (org ruleset).
 - **No secrets in this repo** — AWS credentials come from OpenBao via the platform;
   anything credential-shaped in a manifest is a bug.
+- **Documentation links:** required CI scans README and AGENTS with the pinned retired
+  repository validator and `.github/retired-repo-links.json`. The offline regression
+  `bash scripts/test-retired-repo-links.sh <released-validator-binary>` checks clean
+  content, retired links in both files, and missing configuration.
