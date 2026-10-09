@@ -117,7 +117,7 @@ jobs:
     permissions: {}
     steps:
       - name: 📊 Evaluate job results
-        uses: devantler-tech/.github/actions/aggregate-job-checks@4b00bd6698af033dc472b39a7e609173fe38dfb1 # v6.0.6
+        uses: devantler-tech/.github/actions/aggregate-job-checks@8d3327fe87f216d6e107941de4ce1ae019294cea # v7.9.1
         with:
           job-results: >-
             ${{ needs.validate-manifests.result }}
