@@ -48,7 +48,7 @@ The [README architecture](README.md#how-it-works) explains the platform boundary
 ## Submit your change
 
 Review the diff, configure commit signing and stage only your changed paths. Use a Conventional
-Commit subject describing the outcome:
+Commit subject describing the outcome. For the README-only first change above:
 
 ```sh
 git add README.md

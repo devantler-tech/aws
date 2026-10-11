@@ -1,6 +1,6 @@
 # AWS configuration tenant
 
-Declarative AWS infrastructure for devantler-tech, managed as Crossplane managed
+Declarative AWS infrastructure for devantler-tech, managed as Crossplane-managed
 resources and delivered GitOps-style.
 
 This is the portfolio's desired-state configuration, not a general-purpose AWS provisioning CLI.
