@@ -3,17 +3,17 @@ name: 🚀 CD
 # Publishes the desired AWS state (deploy/) as a cosign-signed OCI manifests
 # artifact consumed by the platform cluster's `aws` tenant. There is NO
 # container image here — only manifests — so it delegates to the shared
-# manifests-only publish workflow in devantler-tech/actions (the
+# manifests-only publish workflow in devantler-tech/.github (the
 # manifests-only sibling of publish-app.yaml). The OCI name defaults to this
 # repository (devantler-tech/aws), so the artifact lands at
 # oci://ghcr.io/devantler-tech/aws/manifests.
 #
 # Because signing runs INSIDE the reusable workflow, the cosign certificate
 # identity (OIDC subject) is that workflow's path —
-# https://github.com/devantler-tech/actions/.github/workflows/publish-manifests.yaml@<ref>
+# https://github.com/devantler-tech/.github/.github/workflows/publish-manifests.yaml@<ref>
 # — NOT this repo's cd.yaml. The platform `aws` OCIRepository's
-# verify.matchOIDCIdentity.subject must match that (mirror the
-# github-config tenant's verify block in devantler-tech/platform).
+# verify.matchOIDCIdentity.subject must match that, so the platform has to
+# accept a revision before this repository releases with it.
 
 on:
   push:
@@ -36,7 +36,8 @@ jobs:
     # verifies, so its shape is load-bearing here. A ref the verifier does not
     # accept fails nothing in this repo — the artifact still publishes, signed
     # under an identity the platform rejects, and the `aws` tenant stops
-    # reconciling until the ref is put back.
-    uses: devantler-tech/actions/.github/workflows/publish-manifests.yaml@ea4df9004d4ab43b6c9af5b0c5f55712f7211328 # v13.10.12
+    # reconciling until the ref is put back. Before a bumped pin releases, the
+    # platform's accepted revisions for this tenant must already include it.
+    uses: devantler-tech/.github/.github/workflows/publish-manifests.yaml@2fa404276b0ce5c0527683b080e39045045c4e42 # v7.2.10
     with:
       enable-caller-pin: true

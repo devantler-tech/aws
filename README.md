@@ -28,7 +28,9 @@ the live tenant reconciles. Keep cloud credentials and provider authentication o
   managed resources (provider-aws family). Manifests are namespace-agnostic — the
   platform injects the target namespace.
 - The **release pipeline** publishes `deploy/` as a cosign-signed OCI manifests artifact at
-  `oci://ghcr.io/devantler-tech/aws/manifests` (see the [CD workflow](.github/workflows/cd.yaml)).
+  `oci://ghcr.io/devantler-tech/aws/manifests` (see the [CD workflow](.github/workflows/cd.yaml)),
+  signed by the shared `publish-manifests.yaml` workflow in
+  [`devantler-tech/.github`](https://github.com/devantler-tech/.github) at a pinned commit.
 - The [platform](https://github.com/devantler-tech/platform) consumes the artifact via
   the `aws` tenant (Flux `OCIRepository` + `Kustomization` with cosign verification),
   and the in-cluster AWS Crossplane provider reconciles the resources against AWS.
