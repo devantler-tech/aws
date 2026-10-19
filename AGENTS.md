@@ -17,7 +17,13 @@ It mirrors the `devantler-tech/.github` repo's `github-config` tenant pattern.
 ## Maintenance
 
 - **Validate before every PR:** `kubectl kustomize deploy/ > /dev/null` (what CI runs).
-  Crossplane CRD semantics are validated on-cluster, not here.
+- **Schema check:** CI also validates the rendered `deploy/` output offline against the
+  provider package declared in `.github/crossplane-validate/extensions.yaml`, with the
+  pinned Crossplane CLI (`scripts/test-validate-crossplane-schemas.sh <crossplane-binary>`,
+  `CROSSPLANE_IMAGE` set as in `ci.yaml`). It catches unknown fields, wrong `apiVersion`s
+  and kinds with no schema; it is not live AWS validation and does not prove the tenant
+  reconciles. Keep that file's provider version equal to the platform's pin; CI warns on a
+  mismatch.
 - **Layout:** all managed resources live under `deploy/`, referenced from
   `deploy/kustomization.yaml`. Keep manifests namespace-agnostic (the platform-side
   tenant Kustomization injects the namespace).

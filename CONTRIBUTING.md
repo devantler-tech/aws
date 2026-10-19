@@ -29,9 +29,10 @@ git diff --check
 ```
 
 Both commands must exit successfully; the render is deliberately quiet. It validates the local
-Kustomize build, not Crossplane CRD semantics, AWS API access or live reconciliation.
-[CI](.github/workflows/ci.yaml) also scans documentation for retired repository links and checks
-positive and negative validator fixtures. Native CI and exact-head substantive review remain
+Kustomize build, not AWS API access or live reconciliation.
+[CI](.github/workflows/ci.yaml) also validates each managed resource offline against its Crossplane
+provider schema, which catches unknown fields and wrong API versions, scans documentation for retired
+repository links, and checks positive and negative fixtures for both checks. Native CI and exact-head substantive review remain
 separate merge gates.
 
 ## Keep configuration and operations separate

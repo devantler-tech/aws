@@ -105,14 +105,66 @@ jobs:
 
       - name: 🧹 Validate deploy/ kustomize build
         # kubectl (with built-in kustomize) is preinstalled on the runner. A
-        # successful build proves the manifests are well-formed; the Crossplane
-        # CRDs are applied/validated on-cluster, not here.
+        # successful build proves the manifests are well-formed; the schema check
+        # is validate-crossplane-schemas below.
         run: kubectl kustomize deploy/ > /dev/null
+
+  validate-crossplane-schemas:
+    name: 🧩 Validate Crossplane schemas
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    env:
+      # The CLI is downloaded from Crossplane's release host and checked against this digest
+      # before it runs. The image supplies Crossplane's built-in schemas; keep it at the
+      # version the platform runs (its crossplane HelmRelease).
+      CROSSPLANE_CLI_VERSION: v2.5.0
+      CROSSPLANE_CLI_SHA256: 065dd6b40c9ea5fc71e49900d5c924cc0bec7f58375922ddbde6b402f292347e
+      CROSSPLANE_IMAGE: xpkg.crossplane.io/crossplane/crossplane:v2.4.2
+    steps:
+      - name: 📑 Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: 📥 Install the Crossplane CLI
+        run: |
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/crossplane" \
+            "https://cli.crossplane.io/stable/${CROSSPLANE_CLI_VERSION}/bin/linux_amd64/crossplane"
+          echo "${CROSSPLANE_CLI_SHA256}  $RUNNER_TEMP/crossplane" | sha256sum --check --strict
+          chmod +x "$RUNNER_TEMP/crossplane"
+          "$RUNNER_TEMP/crossplane" version --client
+
+      - name: 🧩 Validate deploy/ and prove the gate blocks
+        run: bash scripts/test-validate-crossplane-schemas.sh "$RUNNER_TEMP/crossplane"
+
+      - name: 🔎 Compare the provider version with the platform's pin
+        # Reported, not enforced: the platform moves its pin in its own repository, and a
+        # failure here would turn every unrelated pull request red until this file follows.
+        run: |
+          pkg='^xpkg\.upbound\.io/[a-z0-9/-]+:v[0-9]+\.[0-9]+\.[0-9]+$'
+          url=https://raw.githubusercontent.com/devantler-tech/platform/main/k8s/providers/hetzner/infrastructure/crossplane/provider-aws-iam.yaml
+          ours=$(sed -n 's/^  package: //p' .github/crossplane-validate/extensions.yaml)
+          if ! platform=$(curl -fsSL --retry 3 "$url" | sed -n 's/^  package: //p'); then
+            echo "::warning title=Provider pin not compared::could not read the platform's provider-aws-iam pin"
+            exit 0
+          fi
+          # Only a plain package reference is echoed, so file content cannot reach a workflow command.
+          if ! [[ $ours =~ $pkg && $platform =~ $pkg ]]; then
+            echo "::warning title=Provider pin not compared::a package line is missing or not a plain package reference"
+            exit 0
+          fi
+          if [ "$ours" != "$platform" ]; then
+            echo "::warning title=Provider pin mismatch::validated against ${ours}, but the platform runs ${platform}; update .github/crossplane-validate/extensions.yaml"
+          else
+            echo "Provider pin matches the platform: ${ours}"
+          fi
 
   ci-required-checks:
     name: CI - Required Checks
     runs-on: ubuntu-latest
-    needs: [validate-manifests, retired-repo-links]
+    needs: [validate-manifests, validate-crossplane-schemas, retired-repo-links]
     if: always()
     permissions: {}
     steps:
@@ -121,4 +173,5 @@ jobs:
         with:
           job-results: >-
             ${{ needs.validate-manifests.result }}
+            ${{ needs.validate-crossplane-schemas.result }}
             ${{ needs.retired-repo-links.result }}
