@@ -42,6 +42,7 @@ the `ProviderConfig`) is provisioned platform-side — see
 ## Contributing
 
 Follow [CONTRIBUTING.md](CONTRIBUTING.md) for a safe first change, local checks and submission.
-The [CI workflow](.github/workflows/ci.yaml) checks rendering and retired documentation links;
-passing it is not live AWS validation. The release workflow uses Conventional Commit titles to
+The [CI workflow](.github/workflows/ci.yaml) checks rendering, validates every managed resource offline
+against the schemas of the provider version the platform runs, and checks retired documentation
+links. Passing it is not live AWS validation. The release workflow uses Conventional Commit titles to
 decide whether a merge releases and which version it produces. Preserve the [Apache-2.0 license](LICENSE).

@@ -1,0 +1,14 @@
+# The Crossplane packages whose schemas CI validates deploy/ against, offline, with
+# `crossplane resource validate` (scripts/validate-crossplane-schemas.sh).
+#
+# This is the single place the provider version is declared. Keep it equal to the
+# platform's pin in devantler-tech/platform
+# k8s/providers/hetzner/infrastructure/crossplane/provider-aws-iam.yaml: the `aws` tenant
+# reconciles against that version. CI compares the two on every run and reports a
+# mismatch as a warning on the run.
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-aws-iam
+spec:
+  package: xpkg.upbound.io/upbound/provider-aws-iam:v2.9.1
