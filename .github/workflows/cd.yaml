@@ -38,6 +38,6 @@ jobs:
     # under an identity the platform rejects, and the `aws` tenant stops
     # reconciling until the ref is put back. Before a bumped pin releases, the
     # platform's accepted revisions for this tenant must already include it.
-    uses: devantler-tech/.github/.github/workflows/publish-manifests.yaml@2fa404276b0ce5c0527683b080e39045045c4e42 # v7.2.10
+    uses: devantler-tech/.github/.github/workflows/publish-manifests.yaml@3bc75c3a147f40ccdfee9a63602d15570f8af3b1 # v12.0.2
     with:
       enable-caller-pin: true
