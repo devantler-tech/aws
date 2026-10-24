@@ -42,6 +42,13 @@ include them in its Kustomization. Keep manifests namespace-agnostic: the platfo
 namespace and owns provider authentication. Never add cloud credentials, secrets or provider
 configuration here, and never hand-edit generated files.
 
+Today this tenant may own only the account's GitHub Actions OIDC identity provider. The platform
+decides which AWS resource kinds are active and which of them this tenant may manage. To add a
+resource of a new kind, open the [platform](https://github.com/devantler-tech/platform) change
+that activates the kind and grants this tenant permission first, and land the manifest here only
+after it merges. A manifest for a kind the tenant may not manage still passes this repository's
+CI and releases, but the platform refuses it and the whole tenant stops reconciling.
+
 Publishing the signed artifact and applying or reconciling it are maintainer operations, not
 onboarding steps. Do not run an apply command against a production cluster to validate a first PR.
 The [README architecture](README.md#how-it-works) explains the platform boundary.
