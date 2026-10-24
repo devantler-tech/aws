@@ -1,6 +1,6 @@
 # The GitHub Actions OIDC identity provider for this AWS account. One per
 # account; every repo/workflow-scoped CI role trusts it with a `sub` condition
-# (first consumer: the ksail EKS smoke-test role, step 2 in kustomization.yaml).
+# (first consumer: the KSail EKS smoke-test role, which the platform owns).
 # Delete is omitted so a Flux prune can never remove the account's OIDC trust
 # anchor out from under roles that reference it.
 apiVersion: iam.aws.m.upbound.io/v1beta1

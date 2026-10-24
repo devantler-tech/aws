@@ -27,6 +27,16 @@ It mirrors the `devantler-tech/.github` repo's `github-config` tenant pattern.
 - **Layout:** all managed resources live under `deploy/`, referenced from
   `deploy/kustomization.yaml`. Keep manifests namespace-agnostic (the platform-side
   tenant Kustomization injects the namespace).
+- **What this tenant may own:** today, only the account's GitHub Actions OIDC identity
+  provider (`OpenIDConnectProvider`). The platform decides which AWS resource kinds are
+  active and which of them this tenant may write. The EKS CI `Role` and its permissions
+  boundary stay platform-owned on purpose, because the cap on what that identity may create
+  lives inside the `Role`.
+- **Adding a new resource kind takes two PRs, platform first:** the platform activates the
+  kind and grants this tenant permission to manage it; only after that merges does the
+  manifest land here. A manifest for a kind the tenant may not write passes this
+  repository's CI and releases, then the platform refuses it and the whole `aws` tenant
+  stops reconciling.
 - **Auth wiring is platform-side** (namespace, `SecretStore`, bootstrap-credential
   `ExternalSecret`, `ProviderConfig` — platform#2325/#2412): do NOT add credentials or
   provider config here.
