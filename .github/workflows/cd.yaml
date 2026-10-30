@@ -40,6 +40,6 @@ jobs:
     # platform's accepted revisions for this tenant must already include it.
     # Keep the consumer-approved signer until its replacement is deployed and
     # independently verified by the platform (devantler-tech/platform#5267).
-    uses: devantler-tech/.github/.github/workflows/publish-manifests.yaml@2fa404276b0ce5c0527683b080e39045045c4e42 # v7.2.10
+    uses: devantler-tech/.github/.github/workflows/publish-manifests.yaml@bd24a3e1bbbf6aba2d7afd58a2fd8a3d67bebe6b # v19.0.3
     with:
       enable-caller-pin: true
