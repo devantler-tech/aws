@@ -166,11 +166,13 @@ jobs:
     runs-on: ubuntu-latest
     needs: [validate-manifests, validate-crossplane-schemas, retired-repo-links]
     if: always()
-    permissions: {}
+    permissions:
+      actions: read
     steps:
       - name: 📊 Evaluate job results
-        uses: devantler-tech/.github/actions/aggregate-job-checks@bd24a3e1bbbf6aba2d7afd58a2fd8a3d67bebe6b # v19.0.3
+        uses: devantler-tech/.github/actions/aggregate-job-checks@da5f0839b418626a8a0b69df1f04ba931a38e371 # v19.1.0
         with:
+          check-workflow-startup: "true"
           job-results: >-
             ${{ needs.validate-manifests.result }}
             ${{ needs.validate-crossplane-schemas.result }}
