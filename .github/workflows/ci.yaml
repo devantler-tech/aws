@@ -139,27 +139,30 @@ jobs:
       - name: 🧩 Validate deploy/ and prove the gate blocks
         run: bash scripts/test-validate-crossplane-schemas.sh "$RUNNER_TEMP/crossplane"
 
-      - name: 🔎 Compare the provider version with the platform's pin
-        # Reported, not enforced: the platform moves its pin in its own repository, and a
+      - name: 🔎 Compare the provider versions with the platform's pins
+        # Reported, not enforced: the platform moves its pins in its own repository, and a
         # failure here would turn every unrelated pull request red until this file follows.
+        # Each declared provider is compared with the platform file of the same name.
         run: |
           pkg='^xpkg\.upbound\.io/[a-z0-9/-]+:v[0-9]+\.[0-9]+\.[0-9]+$'
-          url=https://raw.githubusercontent.com/devantler-tech/platform/main/k8s/providers/hetzner/infrastructure/crossplane/provider-aws-iam.yaml
-          ours=$(sed -n 's/^  package: //p' .github/crossplane-validate/extensions.yaml)
-          if ! platform=$(curl -fsSL --retry 3 "$url" | sed -n 's/^  package: //p'); then
-            echo "::warning title=Provider pin not compared::could not read the platform's provider-aws-iam pin"
-            exit 0
-          fi
-          # Only a plain package reference is echoed, so file content cannot reach a workflow command.
-          if ! [[ $ours =~ $pkg && $platform =~ $pkg ]]; then
-            echo "::warning title=Provider pin not compared::a package line is missing or not a plain package reference"
-            exit 0
-          fi
-          if [ "$ours" != "$platform" ]; then
-            echo "::warning title=Provider pin mismatch::validated against ${ours}, but the platform runs ${platform}; update .github/crossplane-validate/extensions.yaml"
-          else
-            echo "Provider pin matches the platform: ${ours}"
-          fi
+          base=https://raw.githubusercontent.com/devantler-tech/platform/main/k8s/providers/hetzner/infrastructure/crossplane
+          for name in provider-aws-iam provider-aws-sesv2; do
+            ours=$(awk -v n="$name" '/^  name: /{cur=$2} /^  package: / && cur == n {print $2}' .github/crossplane-validate/extensions.yaml)
+            if ! platform=$(curl -fsSL --retry 3 "$base/$name.yaml" | sed -n 's/^  package: //p'); then
+              echo "::warning title=Provider pin not compared::could not read the platform's $name pin"
+              continue
+            fi
+            # Only a plain package reference is echoed, so file content cannot reach a workflow command.
+            if ! [[ $ours =~ $pkg && $platform =~ $pkg ]]; then
+              echo "::warning title=Provider pin not compared::a $name package line is missing or not a plain package reference"
+              continue
+            fi
+            if [ "$ours" != "$platform" ]; then
+              echo "::warning title=Provider pin mismatch::validated against ${ours}, but the platform runs ${platform}; update .github/crossplane-validate/extensions.yaml"
+            else
+              echo "Provider pin matches the platform: ${ours}"
+            fi
+          done
 
   ci-required-checks:
     name: CI - Required Checks

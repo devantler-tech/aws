@@ -1,0 +1,24 @@
+# A custom MAIL FROM domain for the company mail identity, so the envelope
+# sender is under the mailbox domain and SPF aligns for DMARC. Its MX and SPF
+# records are published by the DNS owner. Until they resolve, SES falls back to
+# its own MAIL FROM domain (UseDefaultValue), so mail keeps flowing and DMARC
+# still passes through the aligned DKIM signature.
+apiVersion: sesv2.aws.m.upbound.io/v1beta1
+kind: EmailIdentityMailFromAttributes
+metadata:
+  name: company-mail-domain
+  annotations:
+    crossplane.io/external-name: devantler.tech
+spec:
+  managementPolicies:
+    - Observe
+    - Create
+    - Update
+    - LateInitialize
+  forProvider:
+    region: eu-central-1
+    mailFromDomain: bounce.devantler.tech
+    behaviorOnMxFailure: UseDefaultValue
+  providerConfigRef:
+    kind: ProviderConfig
+    name: default

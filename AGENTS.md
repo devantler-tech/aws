@@ -27,8 +27,10 @@ It mirrors the `devantler-tech/.github` repo's `github-config` tenant pattern.
 - **Layout:** all managed resources live under `deploy/`, referenced from
   `deploy/kustomization.yaml`. Keep manifests namespace-agnostic (the platform-side
   tenant Kustomization injects the namespace).
-- **What this tenant may own:** today, only the account's GitHub Actions OIDC identity
-  provider (`OpenIDConnectProvider`). The platform decides which AWS resource kinds are
+- **What this tenant may own:** the account's GitHub Actions OIDC identity provider
+  (`OpenIDConnectProvider`), and company Email's SES domain identity and its MAIL FROM
+  domain (`EmailIdentity`, `EmailIdentityMailFromAttributes`). The SMTP sending identity
+  (IAM user, policy and access key) is platform-owned. The platform decides which AWS resource kinds are
   active and which of them this tenant may write. The EKS CI `Role` and its permissions
   boundary stay platform-owned on purpose, because the cap on what that identity may create
   lives inside the `Role`.

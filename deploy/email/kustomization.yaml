@@ -1,0 +1,13 @@
+# Company Email's outbound relay (devantler-tech/platform#5481): the Amazon SES
+# domain identity that signs relayed mail with Easy DKIM, and its custom MAIL
+# FROM domain so SPF aligns with the mailbox domain for DMARC.
+#
+# This repository owns only these two SES resources, which grant no AWS
+# permission to anyone. The SMTP sending identity (IAM user, policy and access
+# key) is owned by devantler-tech/platform, for the same reason the EKS CI role
+# is: what caps a credential must not be editable by this public artifact.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - email-identity.yaml
+  - email-identity-mail-from-attributes.yaml
