@@ -1,0 +1,105 @@
+# Sets up the account's Amazon SES sending for company Email's outbound relay
+# (devantler-tech/platform#5481): the pay-per-use pricing plan, then a request
+# for production access, then a readback of the account's state.
+#
+# Neither setting has a Crossplane resource, so a reviewed workflow makes the
+# two account calls instead of anyone using the AWS console. It runs only from
+# main, after a typed confirmation, with the platform-owned ses-account-setup
+# role. That role trusts only this repository's main branch and holds only
+# ses:GetAccount, ses:PutAccountDetails and ses:PutAccountPricingAttributes in
+# eu-central-1. It checks out no code and prints only fixed account fields.
+#
+# Re-running is safe. The plan call is idempotent, and production access is
+# requested only while it is neither granted nor already under review.
+name: Set Up SES Account
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type set-up-ses-account to set the SES plan and request production access
+        required: true
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: set-up-ses-account
+  cancel-in-progress: false
+
+jobs:
+  set-up:
+    name: 📮 Set up the SES account
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      id-token: write
+    env:
+      AWS_REGION: eu-central-1
+      ROLE_ARN: arn:aws:iam::939001610192:role/ses-account-setup
+    steps:
+      - name: 🔒 Refuse anything but a confirmed run on main
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          if [ "$GITHUB_REF" != refs/heads/main ]; then
+            echo "::error::Run this workflow only from main."
+            exit 1
+          fi
+          if [ "$CONFIRM" != set-up-ses-account ]; then
+            echo "::error::The confirmation text does not match."
+            exit 1
+          fi
+
+      - name: 🔐 Assume the SES account set-up role
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ env.ROLE_ARN }}
+          role-session-name: ses-account-setup-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-duration-seconds: 900
+
+      - name: 💶 Use the pay-per-use pricing plan
+        # NONE is SES's pay-per-use (a-la-carte) plan. Set it before production
+        # access is requested: the plan cannot change while a review is open.
+        run: aws sesv2 put-account-pricing-attributes --plan NONE
+
+      - name: 📨 Request production access
+        env:
+          USE_CASE: >-
+            Devantler Tech is a one-person software consultancy. We send
+            low-volume mail from our own domain only: the owner's ordinary
+            business correspondence with clients and suppliers, and
+            notifications from our own website, such as account invitations
+            and password resets. We send no marketing or bulk mail and use no
+            purchased lists. We expect fewer than 1,000 messages a month. Every
+            recipient is a client, supplier or someone who contacted us. Bounce
+            and complaint notifications are forwarded to the sending mailbox,
+            and the owner handles them.
+        run: |
+          account="$(aws sesv2 get-account --output json)"
+          enabled="$(jq -r '.ProductionAccessEnabled // false' <<<"$account")"
+          review="$(jq -r '.Details.ReviewDetails.Status // "NONE"' <<<"$account")"
+          if [ "$enabled" = true ]; then
+            echo "Production access is already granted."
+          elif [ "$review" = PENDING ]; then
+            echo "A production access review is already pending."
+          else
+            aws sesv2 put-account-details \
+              --production-access-enabled \
+              --mail-type TRANSACTIONAL \
+              --website-url https://devantler.tech \
+              --contact-language EN \
+              --use-case-description "$USE_CASE"
+            echo "Production access requested."
+          fi
+
+      - name: 🔎 Read the account back
+        run: |
+          aws sesv2 get-account --output json | jq '{
+            productionAccessEnabled: (.ProductionAccessEnabled // false),
+            sendingEnabled: (.SendingEnabled // false),
+            enforcementStatus: (.EnforcementStatus // "UNKNOWN"),
+            reviewStatus: (.Details.ReviewDetails.Status // "NONE"),
+            pricingPlan: ([.. | objects | .Plan? | strings] | first // "UNKNOWN")
+          }'
