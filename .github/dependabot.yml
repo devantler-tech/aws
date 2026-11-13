@@ -9,3 +9,11 @@ updates:
       default-days: 7
       exclude:
         - "devantler-tech/*"
+    # The manifests publisher stays on a revision the platform has approved for this
+    # tenant (its publish-workflow-canonical-approvals list); the platform refuses a
+    # publication signed by any other. #61 restored it once and Dependabot moved it
+    # off again twice, so the platform's daily publisher regeneration fails on aws
+    # (devantler-tech/platform#5267). Move this pin by hand, in its own change, once
+    # the platform approves a newer revision.
+    ignore:
+      - dependency-name: "devantler-tech/.github/.github/workflows/publish-manifests.yaml"
