@@ -34,6 +34,9 @@ It mirrors the `devantler-tech/.github` repo's `github-config` tenant pattern.
   active and which of them this tenant may write. The EKS CI `Role` and its permissions
   boundary stay platform-owned on purpose, because the cap on what that identity may create
   lives inside the `Role`.
+- **SES account settings** (pricing plan, production access) have no Crossplane resource.
+  The main-only `Set Up SES Account` workflow sets them through the platform-owned
+  `ses-account-setup` OIDC role, then reads the account back.
 - **Adding a new resource kind takes two PRs, platform first:** the platform activates the
   kind and grants this tenant permission to manage it; only after that merges does the
   manifest land here. A manifest for a kind the tenant may not write passes this
