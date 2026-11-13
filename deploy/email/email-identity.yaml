@@ -1,0 +1,24 @@
+# The company mail domain as an SES identity, verified by Easy DKIM. SES signs
+# every relayed message with this domain's 2048-bit key; the three DKIM tokens
+# appear in status.atProvider.dkimSigningAttributes.tokens and are published as
+# CNAME records by the DNS owner. Delete is omitted so a prune can never
+# remove the identity that outbound company mail depends on.
+apiVersion: sesv2.aws.m.upbound.io/v1beta1
+kind: EmailIdentity
+metadata:
+  name: company-mail-domain
+  annotations:
+    crossplane.io/external-name: devantler.tech
+spec:
+  managementPolicies:
+    - Observe
+    - Create
+    - Update
+    - LateInitialize
+  forProvider:
+    region: eu-central-1
+    dkimSigningAttributes:
+      nextSigningKeyLength: RSA_2048_BIT
+  providerConfigRef:
+    kind: ProviderConfig
+    name: default
