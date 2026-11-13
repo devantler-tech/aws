@@ -9,8 +9,9 @@
 # ses:GetAccount, ses:PutAccountDetails and ses:PutAccountPricingAttributes in
 # eu-central-1. It checks out no code and prints only fixed account fields.
 #
-# Re-running is safe. The plan call is idempotent, and production access is
-# requested only while it is neither granted nor already under review.
+# Re-running is safe. The plan is written only when pay-per-use is neither
+# active nor scheduled, and production access is requested only while it is
+# neither granted nor already under review.
 name: Set Up SES Account
 
 on:
@@ -61,8 +62,22 @@ jobs:
 
       - name: 💶 Use the pay-per-use pricing plan
         # NONE is SES's pay-per-use (a-la-carte) plan. Set it before production
-        # access is requested: the plan cannot change while a review is open.
-        run: aws sesv2 put-account-pricing-attributes --plan NONE
+        # access is requested: the plan cannot change while a review is open, so
+        # a rerun during a pending review writes nothing.
+        run: |
+          account="$(aws sesv2 get-account --output json)"
+          current="$(jq -r '.PricingAttributes.CurrentPlan // "UNKNOWN"' <<<"$account")"
+          next="$(jq -r '.PricingAttributes.NextPlan // "UNKNOWN"' <<<"$account")"
+          review="$(jq -r '.Details.ReviewDetails.Status // "NONE"' <<<"$account")"
+          if [ "$current" = NONE ] || [ "$next" = NONE ]; then
+            echo "The pay-per-use plan is already active or scheduled."
+          elif [ "$review" = PENDING ]; then
+            echo "::error::A production access review is pending, so the plan cannot change now."
+            exit 1
+          else
+            aws sesv2 put-account-pricing-attributes --plan NONE
+            echo "Pay-per-use plan set."
+          fi
 
       - name: 📨 Request production access
         env:
@@ -101,5 +116,6 @@ jobs:
             sendingEnabled: (.SendingEnabled // false),
             enforcementStatus: (.EnforcementStatus // "UNKNOWN"),
             reviewStatus: (.Details.ReviewDetails.Status // "NONE"),
-            pricingPlan: ([.. | objects | .Plan? | strings] | first // "UNKNOWN")
+            currentPlan: (.PricingAttributes.CurrentPlan // "UNKNOWN"),
+            nextPlan: (.PricingAttributes.NextPlan // "NONE_SCHEDULED")
           }'
