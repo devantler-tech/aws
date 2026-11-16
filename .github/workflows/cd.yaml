@@ -2,18 +2,18 @@ name: 🚀 CD
 
 # Publishes the desired AWS state (deploy/) as a cosign-signed OCI manifests
 # artifact consumed by the platform cluster's `aws` tenant. There is NO
-# container image here — only manifests — so it delegates to the shared
-# manifests-only publish workflow in devantler-tech/.github (the
-# manifests-only sibling of publish-app.yaml). The OCI name defaults to this
-# repository (devantler-tech/aws), so the artifact lands at
-# oci://ghcr.io/devantler-tech/aws/manifests.
+# container image here, only manifests, so the shared publish-app action runs
+# in `manifests` mode. The OCI name defaults to this repository
+# (devantler-tech/aws), so the artifact lands at
+# oci://ghcr.io/devantler-tech/aws/manifests, tagged with the release version
+# and `latest`.
 #
-# Because signing runs INSIDE the reusable workflow, the cosign certificate
-# identity (OIDC subject) is that workflow's path —
-# https://github.com/devantler-tech/.github/.github/workflows/publish-manifests.yaml@<ref>
-# — NOT this repo's cd.yaml. The platform `aws` OCIRepository's
-# verify.matchOIDCIdentity.subject must match that, so the platform has to
-# accept a revision before this repository releases with it.
+# The action runs directly in this workflow, so the cosign certificate identity
+# (OIDC subject) is this repository's own release workflow on its tag —
+# https://github.com/devantler-tech/aws/.github/workflows/cd.yaml@refs/tags/vX.Y.Z
+# — whatever action revision runs (devantler-tech/monorepo ADR 0017). The
+# platform `aws` OCIRepository's verify.matchOIDCIdentity.subject accepts that
+# identity, so a new action revision needs no platform approval.
 
 on:
   push:
@@ -25,21 +25,29 @@ permissions: {}
 jobs:
   publish-manifests:
     name: 🗳️ Publish manifests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Serialize this repository's publishers and never cancel one mid-release.
+    concurrency:
+      group: publish-${{ github.repository }}
+      cancel-in-progress: false
     permissions:
-      contents: read # checkout
+      contents: read # checkout and the default-branch fetch
       packages: write # push the OCI artifact to GHCR
-      id-token: write # keyless cosign signing (Fulcio + Rekor via GitHub OIDC)
-    # Pinned to the released commit SHA (zizmor blanket policy requires a hash;
-    # the SHA must be reachable from a tag, or zizmor flags it as an impostor).
-    # Dependabot's github-actions ecosystem manages this pin.
-    # Keep the ref a 40-hex commit: it is part of the cosign subject the platform
-    # verifies, so its shape is load-bearing here. A ref the verifier does not
-    # accept fails nothing in this repo — the artifact still publishes, signed
-    # under an identity the platform rejects, and the `aws` tenant stops
-    # reconciling until the ref is put back. Before a bumped pin releases, the
-    # platform's accepted revisions for this tenant must already include it.
-    # Keep the consumer-approved signer until its replacement is deployed and
-    # independently verified by the platform (devantler-tech/platform#5267).
-    uses: devantler-tech/.github/.github/workflows/publish-manifests.yaml@2fa404276b0ce5c0527683b080e39045045c4e42 # v7.2.10
-    with:
-      enable-caller-pin: true
+      id-token: write # keyless cosign signing as this workflow (Fulcio + Rekor via GitHub OIDC)
+    steps:
+      - name: 🛡️ Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+      - name: 📑 Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false # required: publish-app refuses a persisted credential
+      # Pinned to the released commit SHA (zizmor blanket policy requires a hash;
+      # the SHA must be reachable from a tag, or zizmor flags it as an impostor).
+      # Dependabot's github-actions ecosystem manages this pin.
+      - name: 📦 Publish signed manifests
+        uses: devantler-tech/.github/actions/publish-app@d70d50665465117f01104313e53057374a96a1a3 # v21.7.2
+        with:
+          mode: manifests
