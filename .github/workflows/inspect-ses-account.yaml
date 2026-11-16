@@ -1,0 +1,110 @@
+# Read-only counterpart to set-up-ses-account.yaml. It shares the approved
+# protected-main identity, restricted further by an inline session policy.
+name: Inspect SES Account
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type inspect-ses-account to read readiness without changing the account
+        required: true
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: inspect-ses-account
+  cancel-in-progress: false
+
+jobs:
+  inspect:
+    name: Inspect SES readiness without changing settings
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      id-token: write
+    env:
+      AWS_REGION: eu-central-1
+      ROLE_ARN: arn:aws:iam::939001610192:role/ses-account-setup
+      EXPECTED_ACCOUNT_ID: "939001610192"
+      AWS_PAGER: ""
+      AWS_CLI_AUTO_PROMPT: "off"
+      AWS_RETRY_MODE: standard
+      AWS_MAX_ATTEMPTS: "3"
+      AWS_EC2_METADATA_DISABLED: "true"
+      AWS_IGNORE_CONFIGURED_ENDPOINT_URLS: "true"
+      AWS_SHARED_CREDENTIALS_FILE: /dev/null
+      AWS_CONFIG_FILE: /dev/null
+    steps:
+      - name: Require the exact confirmed main workflow
+        id: guard
+        shell: bash
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          set -euo pipefail
+          refuse() { printf '%s\n' 'SES_ACCOUNT_INSPECTION=REFUSED' >&2; exit 2; }
+          if [[ $# != 0 || "$GITHUB_EVENT_NAME" != workflow_dispatch || "$GITHUB_REF" != refs/heads/main || "$GITHUB_REPOSITORY" != devantler-tech/aws || "$GITHUB_WORKFLOW_REF" != devantler-tech/aws/.github/workflows/inspect-ses-account.yaml@refs/heads/main || "$GITHUB_ACTOR" != devantler || "$GITHUB_RUN_ATTEMPT" != 1 || "$RUNNER_ENVIRONMENT" != github-hosted || "$CONFIRM" != inspect-ses-account ]]; then
+            refuse
+          fi
+          jq -e '.inputs | type == "object" and keys == ["confirm"] and .confirm == "inspect-ses-account"' \
+            "$GITHUB_EVENT_PATH" >/dev/null 2>&1 || refuse
+
+      - name: Assume the existing identity with an inspection-only session
+        id: credentials
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ env.ROLE_ARN }}
+          role-session-name: ses-account-inspect-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-duration-seconds: 900
+          allowed-account-ids: ${{ env.EXPECTED_ACCOUNT_ID }}
+          mask-aws-account-id: true
+          unset-current-credentials: true
+          translate-env-variables: false
+          output-credentials: false
+          retry-max-attempts: 3
+          action-timeout-s: 90
+          inline-session-policy: >-
+            {"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["ses:GetAccount","sts:GetCallerIdentity"],"Resource":"*","Condition":{"StringEquals":{"aws:RequestedRegion":"eu-central-1"}}}]}
+
+      - name: Read and validate only the fixed readiness fields
+        id: read
+        shell: bash
+        run: |
+          set -euo pipefail
+          fail() { printf 'SES_ACCOUNT_INSPECTION=UNVERIFIED stage=%s\n' "$1" >&2; exit 2; }
+          identity=$(aws sts get-caller-identity --region "$AWS_REGION" --output json --no-cli-pager \
+            --cli-connect-timeout 10 --cli-read-timeout 20 2>/dev/null) || fail identity
+          jq -e -s --arg expected "$EXPECTED_ACCOUNT_ID" \
+            'length == 1 and (.[0] | type == "object" and (.Account | type == "string") and .Account == $expected)' \
+            <<<"$identity" >/dev/null 2>&1 || fail identity
+          unset identity
+          account=$(aws sesv2 get-account --region "$AWS_REGION" --output json --no-cli-pager \
+            --cli-connect-timeout 10 --cli-read-timeout 20 2>/dev/null) || fail account
+          jq -c -e -s '
+            def finite: type == "number" and isfinite;
+            if length != 1 then empty else .[0] |
+              if type == "object" and
+                (.ProductionAccessEnabled | type == "boolean") and
+                (.SendingEnabled | type == "boolean") and
+                (.EnforcementStatus | IN("HEALTHY", "PROBATION", "SHUTDOWN")) and
+                (.SendQuota | type == "object" and
+                  (.Max24HourSend | finite and (. >= 0 or . == -1)) and
+                  (.MaxSendRate | finite and . >= 0) and
+                  (.SentLast24Hours | finite and . >= 0)) and
+                ((has("Details") | not) or (.Details | type == "object" and
+                  ((has("ReviewDetails") | not) or (.ReviewDetails | type == "object" and
+                    ((has("Status") | not) or (.Status | type == "string" and IN("PENDING", "FAILED", "GRANTED", "DENIED")))))))
+              then (.Details.ReviewDetails.Status // null) as $review | {
+                productionAccessEnabled: .ProductionAccessEnabled,
+                sendingEnabled: .SendingEnabled,
+                enforcementHealthy: (.EnforcementStatus == "HEALTHY"),
+                reviewKnown: ($review != null),
+                reviewPending: ($review == "PENDING"),
+                max24HourSend: .SendQuota.Max24HourSend,
+                maxSendRate: .SendQuota.MaxSendRate,
+                sentLast24Hours: .SendQuota.SentLast24Hours
+              } else empty end
+            end
+          ' <<<"$account" 2>/dev/null || fail metadata
