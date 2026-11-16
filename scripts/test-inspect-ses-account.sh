@@ -11,13 +11,16 @@ yq -o=json '.' "$workflow" > "$work/workflow.json"
 yq -o=json '.' "$root/.github/workflows/set-up-ses-account.yaml" > "$work/setup.json"
 role=$(jq -er '.jobs["set-up"].env.ROLE_ARN' "$work/setup.json")
 region=$(jq -er '.jobs["set-up"].env.AWS_REGION' "$work/setup.json")
+setup_group=$(jq -er '.concurrency.group | select(type == "string" and length > 0)' "$work/setup.json")
 account=${role#arn:aws:iam::}; account=${account%%:*}
 [[ $account =~ ^[0-9]{12}$ && $region == eu-central-1 ]] || fail 'approved source binding is unavailable'
 
 # Parse the workflow structure, including the policy, rather than looking for
 # safe-looking words that a different runnable job could bypass.
-jq -e --arg role "$role" --arg region "$region" --arg account "$account" '
+jq -e --arg role "$role" --arg region "$region" --arg account "$account" --arg setup_group "$setup_group" '
   keys == ["concurrency","jobs","name","on","permissions"] and
+  .concurrency == {group:"inspect-ses-account", "cancel-in-progress":false} and
+  (.concurrency.group | ascii_downcase) != ($setup_group | ascii_downcase) and
   (.on | keys == ["workflow_dispatch"]) and
   (.on.workflow_dispatch.inputs | keys == ["confirm"]) and
   (.on.workflow_dispatch.inputs.confirm | .type == "string" and .required == true and (has("default") | not)) and
@@ -186,7 +189,7 @@ done
 # These fixtures must fail the structural gate before any script/API runs.
 # The optional file argument prevents recursive negative-control generation.
 if [[ $# == 0 ]]; then
-  for boundary in policy role mutable-action extra-job cloud-checkout guard-bypass; do
+  for boundary in policy role mutable-action extra-job cloud-checkout guard-bypass concurrency-collision; do
     case "$boundary" in
       policy) change='.jobs.inspect.steps[1].with["inline-session-policy"] |= (fromjson | .Statement[0].Action += ["ses:PutAccountDetails"] | tojson)' ;;
       role) change='.jobs.inspect.env.ROLE_ARN = "arn:aws:iam::000000000000:role/different"' ;;
@@ -194,8 +197,9 @@ if [[ $# == 0 ]]; then
       extra-job) change='.jobs.mutate = {steps:[{run:"aws sesv2 put-account-details"}]}' ;;
       cloud-checkout) change='.jobs.inspect.steps += [{uses:"actions/checkout@main"}]' ;;
       guard-bypass) change='.jobs.inspect.steps[1].if = "always()"' ;;
+      concurrency-collision) change=".concurrency.group = \$setup_group" ;;
     esac
-    jq "$change" "$work/workflow.json" > "$work/boundary.yaml"
+    jq --arg setup_group "$setup_group" "$change" "$work/workflow.json" > "$work/boundary.yaml"
     status=0
     bash "$root/scripts/test-inspect-ses-account.sh" "$work/boundary.yaml" > "$work/boundary.log" 2>&1 || status=$?
     [[ $status != 0 ]] || fail "unsafe source fixture accepted: $boundary"
