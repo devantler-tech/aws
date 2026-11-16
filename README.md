@@ -48,7 +48,9 @@ identity with a session restricted to identity verification and the SES account 
 job checks out no repository code and cannot request production access, change pricing or send mail.
 The existing account setup workflow retains its separate purpose and confirmation.
 
-The receipt contains readiness and review booleans plus numeric quota fields. Missing required
+The receipt contains readiness and review booleans, a closed review-status value, and numeric
+quota fields.
+The status is `PENDING`, `FAILED`, `GRANTED`, `DENIED` or `UNKNOWN` when absent. Missing required
 fields, malformed metadata, a failed API call or an unexpected account fail the inspection.
 An omitted optional review status yields `reviewKnown: false`; that is not evidence that an earlier
 review has finished. Neither a sandbox result nor a pending review authorizes another request.

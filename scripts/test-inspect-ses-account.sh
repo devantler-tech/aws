@@ -97,15 +97,20 @@ private_free() {
 }
 receipt_shape() {
   jq -e -s 'length == 1 and (.[0] |
-    keys == ["enforcementHealthy","max24HourSend","maxSendRate","productionAccessEnabled","reviewKnown","reviewPending","sendingEnabled","sentLast24Hours"] and
+    keys == ["enforcementHealthy","max24HourSend","maxSendRate","productionAccessEnabled","reviewKnown","reviewPending","reviewStatus","sendingEnabled","sentLast24Hours"] and
     ([.productionAccessEnabled,.sendingEnabled,.enforcementHealthy,.reviewKnown,.reviewPending] | all(.[]; type == "boolean")) and
+    (.reviewStatus | IN("PENDING","FAILED","GRANTED","DENIED","UNKNOWN")) and
     ([.max24HourSend,.maxSendRate,.sentLast24Hours] | all(.[]; type == "number")))' "$work/stdout" >/dev/null || fail 'receipt is not exactly the fixed public shape'
 }
-for case_name in pending granted unknown-review unlimited; do
+for case_name in pending granted failed denied unknown-review missing-review-details missing-review-status unlimited; do
   reset_fixture
   case "$case_name" in
     granted) jq '.ProductionAccessEnabled=true | .SendingEnabled=false | .EnforcementStatus="PROBATION" | .Details.ReviewDetails.Status="GRANTED" | .SendQuota.MaxSendRate=14.5' "$work/account.json" > "$work/changed.json"; mv "$work/changed.json" "$work/account.json" ;;
+    failed) jq '.Details.ReviewDetails.Status="FAILED"' "$work/account.json" > "$work/changed.json"; mv "$work/changed.json" "$work/account.json" ;;
+    denied) jq '.Details.ReviewDetails.Status="DENIED"' "$work/account.json" > "$work/changed.json"; mv "$work/changed.json" "$work/account.json" ;;
     unknown-review) jq 'del(.Details)' "$work/account.json" > "$work/changed.json"; mv "$work/changed.json" "$work/account.json" ;;
+    missing-review-details) jq 'del(.Details.ReviewDetails)' "$work/account.json" > "$work/changed.json"; mv "$work/changed.json" "$work/account.json" ;;
+    missing-review-status) jq 'del(.Details.ReviewDetails.Status)' "$work/account.json" > "$work/changed.json"; mv "$work/changed.json" "$work/account.json" ;;
     unlimited) jq '.SendQuota.Max24HourSend=-1' "$work/account.json" > "$work/changed.json"; mv "$work/changed.json" "$work/account.json" ;;
   esac
   run_script bash "$work/guard.sh" > "$work/stdout" 2> "$work/stderr" || fail "valid guard refused: $case_name"
@@ -114,9 +119,11 @@ for case_name in pending granted unknown-review unlimited; do
   [[ $(cat "$work/calls") == $'sts get-caller-identity\nsesv2 get-account' ]] || fail 'inspection used an unexpected API sequence'
   receipt_shape
   case "$case_name" in
-    pending) jq -e '.productionAccessEnabled == false and .sendingEnabled == true and .enforcementHealthy == true and .reviewKnown == true and .reviewPending == true and .max24HourSend == 200 and .maxSendRate == 1 and .sentLast24Hours == 0' "$work/stdout" >/dev/null || fail 'pending fields were changed' ;;
-    granted) jq -e '.productionAccessEnabled == true and .sendingEnabled == false and .enforcementHealthy == false and .reviewKnown == true and .reviewPending == false and .maxSendRate == 14.5' "$work/stdout" >/dev/null || fail 'granted fields were changed' ;;
-    unknown-review) jq -e '.reviewKnown == false and .reviewPending == false' "$work/stdout" >/dev/null || fail 'missing review invented a known decision' ;;
+    pending) jq -e '.productionAccessEnabled == false and .sendingEnabled == true and .enforcementHealthy == true and .reviewKnown == true and .reviewPending == true and .reviewStatus == "PENDING" and .max24HourSend == 200 and .maxSendRate == 1 and .sentLast24Hours == 0' "$work/stdout" >/dev/null || fail 'pending fields were changed' ;;
+    granted) jq -e '.productionAccessEnabled == true and .sendingEnabled == false and .enforcementHealthy == false and .reviewKnown == true and .reviewPending == false and .reviewStatus == "GRANTED" and .maxSendRate == 14.5' "$work/stdout" >/dev/null || fail 'granted fields were changed' ;;
+    failed) jq -e '.reviewKnown == true and .reviewPending == false and .reviewStatus == "FAILED"' "$work/stdout" >/dev/null || fail 'failed review status was changed' ;;
+    denied) jq -e '.reviewKnown == true and .reviewPending == false and .reviewStatus == "DENIED"' "$work/stdout" >/dev/null || fail 'denied review status was changed' ;;
+    unknown-review|missing-review-details|missing-review-status) jq -e '.reviewKnown == false and .reviewPending == false and .reviewStatus == "UNKNOWN"' "$work/stdout" >/dev/null || fail 'missing review invented a known decision' ;;
     unlimited) jq -e '.max24HourSend == -1' "$work/stdout" >/dev/null || fail 'documented unlimited quota was changed' ;;
   esac
   [[ ! -s $work/stderr ]] || fail 'success wrote a diagnostic'
