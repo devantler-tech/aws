@@ -29,7 +29,8 @@ jobs:
     timeout-minutes: 30
     # Serialize this repository's publishers and never cancel one mid-release.
     concurrency:
-      group: publish-${{ github.repository }}
+      group: publish-verified-${{ github.repository }}
+      queue: max
       cancel-in-progress: false
     permissions:
       contents: read # checkout and the default-branch fetch
