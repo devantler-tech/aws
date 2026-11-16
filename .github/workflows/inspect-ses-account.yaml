@@ -102,6 +102,7 @@ jobs:
                 enforcementHealthy: (.EnforcementStatus == "HEALTHY"),
                 reviewKnown: ($review != null),
                 reviewPending: ($review == "PENDING"),
+                reviewStatus: ($review // "UNKNOWN"),
                 max24HourSend: .SendQuota.Max24HourSend,
                 maxSendRate: .SendQuota.MaxSendRate,
                 sentLast24Hours: .SendQuota.SentLast24Hours
