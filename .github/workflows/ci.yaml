@@ -14,6 +14,20 @@ on:
 permissions: {}
 
 jobs:
+  inspect-ses-account:
+    name: Read-only SES inspection boundaries
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout the proposed source without cloud credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Test the actual inspection scripts with isolated fake AWS reads
+        run: bash scripts/test-inspect-ses-account.sh
+
   retired-repo-links:
     name: Retired repository links
     runs-on: ubuntu-latest
@@ -167,7 +181,7 @@ jobs:
   ci-required-checks:
     name: CI - Required Checks
     runs-on: ubuntu-latest
-    needs: [validate-manifests, validate-crossplane-schemas, retired-repo-links]
+    needs: [validate-manifests, validate-crossplane-schemas, retired-repo-links, inspect-ses-account]
     if: always()
     permissions:
       actions: read
@@ -180,3 +194,4 @@ jobs:
             ${{ needs.validate-manifests.result }}
             ${{ needs.validate-crossplane-schemas.result }}
             ${{ needs.retired-repo-links.result }}
+            ${{ needs.inspect-ses-account.result }}
