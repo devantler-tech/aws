@@ -47,11 +47,13 @@ It mirrors the `devantler-tech/.github` repo's `github-config` tenant pattern.
   provider config here.
 - **Release flow:** squash-merge with a Conventional-Commit PR title → semantic-release
   cuts the version on `main` push → the `v*` tag triggers `cd.yaml`, which publishes and
-  cosign-signs the artifact via the shared `publish-manifests.yaml` workflow in
-  `devantler-tech/.github`. The signing identity is that workflow's path at the pinned
-  commit (`devantler-tech/.github/.github/workflows/publish-manifests.yaml@<sha>`), and the
-  platform `aws` tenant's verifier must accept it. Dependabot bumps that pin; the platform's
-  accepted revisions must include a bumped commit before a release ships with it.
+  cosign-signs the artifact by running the shared `publish-app` action from
+  `devantler-tech/.github` in `manifests` mode, directly in that workflow. The signing
+  identity is this repository's own `cd.yaml` on the release tag
+  (`devantler-tech/aws/.github/workflows/cd.yaml@refs/tags/vX.Y.Z`, ADR 0017), which the
+  platform `aws` tenant's verifier accepts. Dependabot bumps the action's commit pin; a new
+  revision needs no platform approval. Keep the action called directly in `cd.yaml`: from
+  inside a reusable workflow the signature would name that workflow instead.
 - **Required check:** `CI - Required Checks` (org ruleset).
 - **No secrets in this repo** — AWS credentials come from OpenBao via the platform;
   anything credential-shaped in a manifest is a bug.
