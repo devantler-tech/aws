@@ -14,6 +14,20 @@ on:
 permissions: {}
 
 jobs:
+  inspect-ses-account:
+    name: Read-only SES inspection boundaries
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout the proposed source without cloud credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Test the actual inspection scripts with isolated fake AWS reads
+        run: bash scripts/test-inspect-ses-account.sh
+
   retired-repo-links:
     name: Retired repository links
     runs-on: ubuntu-latest
@@ -28,7 +42,7 @@ jobs:
 
       - name: Check documentation links
         id: links
-        uses: devantler-tech/.github/actions/validate-retired-repo-links@6d7f2729066619564913566e573dfee6eadb3208  # v21.3.3
+        uses: devantler-tech/.github/actions/validate-retired-repo-links@cc156a3693019fdbe9817c46f1a91cd50a124695  # v21.7.3
         with:
           enabled: "true"
 
@@ -47,7 +61,7 @@ jobs:
       - name: Reject the retired README link
         id: retired
         continue-on-error: true
-        uses: devantler-tech/.github/actions/validate-retired-repo-links@6d7f2729066619564913566e573dfee6eadb3208  # v21.3.3
+        uses: devantler-tech/.github/actions/validate-retired-repo-links@cc156a3693019fdbe9817c46f1a91cd50a124695  # v21.7.3
         with:
           enabled: "true"
           working-directory: ${{ runner.temp }}/retired-links-fixture
@@ -55,7 +69,7 @@ jobs:
       - name: Reject missing configuration
         id: missing
         continue-on-error: true
-        uses: devantler-tech/.github/actions/validate-retired-repo-links@6d7f2729066619564913566e573dfee6eadb3208  # v21.3.3
+        uses: devantler-tech/.github/actions/validate-retired-repo-links@cc156a3693019fdbe9817c46f1a91cd50a124695  # v21.7.3
         with:
           enabled: "true"
           config-file: .github/missing-retired-repo-links.json
@@ -167,16 +181,17 @@ jobs:
   ci-required-checks:
     name: CI - Required Checks
     runs-on: ubuntu-latest
-    needs: [validate-manifests, validate-crossplane-schemas, retired-repo-links]
+    needs: [validate-manifests, validate-crossplane-schemas, retired-repo-links, inspect-ses-account]
     if: always()
     permissions:
       actions: read
     steps:
       - name: 📊 Evaluate job results
-        uses: devantler-tech/.github/actions/aggregate-job-checks@6d7f2729066619564913566e573dfee6eadb3208 # v21.3.3
+        uses: devantler-tech/.github/actions/aggregate-job-checks@cc156a3693019fdbe9817c46f1a91cd50a124695 # v21.7.3
         with:
           check-workflow-startup: "true"
           job-results: >-
             ${{ needs.validate-manifests.result }}
             ${{ needs.validate-crossplane-schemas.result }}
             ${{ needs.retired-repo-links.result }}
+            ${{ needs.inspect-ses-account.result }}

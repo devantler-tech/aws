@@ -39,6 +39,28 @@ Authentication (namespace, `SecretStore`, bootstrap-credential `ExternalSecret`,
 the `ProviderConfig`) is provisioned platform-side — see
 [platform#2325](https://github.com/devantler-tech/platform/issues/2325).
 
+## Inspect SES readiness
+
+The separate [Inspect SES Account workflow](.github/workflows/inspect-ses-account.yaml)
+reads the approved account in the fixed sending region after the typed confirmation
+`inspect-ses-account`. It runs only from protected `main` as the maintainer, using the existing
+identity with a session restricted to identity verification and the SES account read. Its cloud
+job checks out no repository code and cannot request production access, change pricing or send mail.
+The existing account setup workflow retains its separate purpose and confirmation.
+
+The receipt contains readiness and review booleans, a closed review-status value, and numeric
+quota fields.
+The status is `PENDING`, `FAILED`, `GRANTED`, `DENIED` or `UNKNOWN` when absent. Missing required
+fields, malformed metadata, a failed API call or an unexpected account fail the inspection.
+An omitted optional review status yields `reviewKnown: false`; that is not evidence that an earlier
+review has finished. Neither a sandbox result nor a pending review authorizes another request.
+The read also does not prove an authenticated delivery or inbox placement.
+
+Run `bash scripts/test-inspect-ses-account.sh` to exercise the actual scripts with synthetic API
+responses and no AWS credentials or network calls. This needs Bash, `jq` and Mike Farah's `yq` v4.
+The check validates source and session-policy boundaries before testing success, failure and
+private-output handling. CI includes it in the required aggregate.
+
 ## Contributing
 
 Follow [CONTRIBUTING.md](CONTRIBUTING.md) for a safe first change, local checks and submission.
