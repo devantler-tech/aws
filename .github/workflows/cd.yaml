@@ -49,6 +49,6 @@ jobs:
       # the SHA must be reachable from a tag, or zizmor flags it as an impostor).
       # Dependabot's github-actions ecosystem manages this pin.
       - name: 📦 Publish signed manifests
-        uses: devantler-tech/.github/actions/publish-app@d70d50665465117f01104313e53057374a96a1a3 # v21.7.2
+        uses: devantler-tech/.github/actions/publish-app@cc156a3693019fdbe9817c46f1a91cd50a124695 # v21.7.3
         with:
           mode: manifests
